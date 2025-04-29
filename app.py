@@ -176,6 +176,47 @@ def generate_custom_doc():
     draft_text = generate_custom_document(user_prompt, page_text)
 
     return render_template("custom_doc_editor.html", draft_text=draft_text)
+@app.route("/ask_vector", methods=["POST"])
+@requires_auth
+def ask_vector():
+    data = request.get_json()
+    question = data.get("question", "").strip()
+
+    if not question:
+        return jsonify({"reply": "⚠️ Missing question."})
+
+    from utils.vector_index import query_index
+    from utils.ai_helpers import generate_chat_reply
+
+    chunks = query_index(question)
+    if not chunks:
+        return jsonify({"reply": "⚠️ No relevant content found."})
+
+    context = "\n\n".join(chunks)
+    reply = generate_chat_reply(question, context)
+
+    return jsonify({"reply": reply})
+@app.route("/index_page", methods=["POST"])    #TEMP ADD
+@requires_auth
+def index_confluence_page():
+    data = request.get_json()
+    confluence_url = data.get("confluence_url")
+
+    if not confluence_url:
+        return jsonify({"status": "error", "message": "Missing confluence_url"})
+
+    from utils.confluence import extract_page_id, fetch_confluence_content
+    from utils.vector_index import index_page
+
+    page_id = extract_page_id(confluence_url)
+    title, content, *_ = fetch_confluence_content(page_id)
+
+    if not content:
+        return jsonify({"status": "error", "message": "Failed to fetch page content"})
+
+    index_page(page_id, title, content)
+
+    return jsonify({"status": "success", "message": f"Indexed page '{title}'"})
 
 # --- Download custom document as Word ---
 @app.route("/download_word", methods=["POST"])
