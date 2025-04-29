@@ -1,0 +1,128 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Custom Document Editor</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+
+  <!-- 🛠 Tailwind config for dark mode -->
+  <script>
+    tailwind.config = {
+      darkMode: 'class'
+    }
+  </script>
+
+  <!-- 🛠 Immediately apply dark mode if user previously selected it -->
+  <script>
+    if (localStorage.getItem('theme') === 'dark') {
+      document.documentElement.classList.add('dark');
+    }
+  </script>
+
+  <style>
+    #previewArea img {
+      max-width: 400px;
+      height: auto;
+      display: block;
+      margin: 10px auto;
+    }
+    html {
+      transition: background-color 0.3s, color 0.3s;
+    }
+    #toast {
+      transition: all 0.5s ease;
+    }
+  </style>
+</head>
+
+<body class="bg-gray-100 dark:bg-gray-900 text-gray-800 dark:text-gray-100 p-8 min-h-screen flex flex-col items-center justify-center">
+
+  <div class="w-full max-w-4xl bg-white dark:bg-gray-800 shadow-lg rounded-lg p-6 space-y-6">
+    <h1 class="text-2xl font-bold text-blue-600 dark:text-blue-400">📝 Edit Your Custom Document</h1>
+
+    <!-- Textarea for editing -->
+    <textarea id="docArea" class="w-full h-96 border rounded p-4 text-sm bg-white dark:bg-gray-700 dark:text-gray-100" oninput="updatePreview()">{{ draft_text }}</textarea>
+
+    <!-- Live Preview -->
+    <h2 class="text-xl font-bold text-gray-700 dark:text-gray-300 mt-6">Preview:</h2>
+    <div id="previewArea" class="border rounded p-4 bg-gray-50 dark:bg-gray-700 text-sm overflow-auto"></div>
+
+    <div class="flex gap-4 justify-end mt-6">
+      <button onclick="goHome()" class="bg-gray-300 dark:bg-gray-700 hover:bg-gray-400 dark:hover:bg-gray-600 text-gray-800 dark:text-gray-100 font-semibold px-4 py-2 rounded">
+        Go Home
+      </button>
+      <button onclick="downloadWord()" class="bg-blue-600 hover:bg-blue-700 text-white font-semibold px-4 py-2 rounded">
+        Download as Word
+      </button>
+    </div>
+  </div>
+
+  <!-- Toast Notification -->
+  <div id="toast" class="fixed top-4 right-4 px-6 py-3 rounded-lg shadow-lg hidden z-50 text-white">
+    <span id="toastMessage"></span>
+  </div>
+
+  <script>
+    function updatePreview() {
+      const inputText = document.getElementById('docArea').value;
+      let html = marked.parse(inputText);
+
+      html = html.replace(/<img /g, '<img style="max-width:400px; height:auto; display:block; margin:10px auto;" ');
+
+      document.getElementById('previewArea').innerHTML = html;
+    }
+
+    function goHome() {
+      window.location.href = "/";
+    }
+
+    function showToast(message, isSuccess) {
+      const toast = document.getElementById('toast');
+      const toastMessage = document.getElementById('toastMessage');
+      toastMessage.textContent = message;
+
+      if (isSuccess) {
+        toast.classList.remove('bg-red-500');
+        toast.classList.add('bg-green-500');
+      } else {
+        toast.classList.remove('bg-green-500');
+        toast.classList.add('bg-red-500');
+      }
+
+      toast.classList.remove('hidden');
+
+      setTimeout(() => {
+        toast.classList.add('hidden');
+      }, 5000);
+    }
+
+    function downloadWord() {
+      const text = document.getElementById('docArea').value;
+
+      fetch('/download_word', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({ document_text: text })
+      })
+      .then(response => response.blob())
+      .then(blob => {
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = "custom_document.docx";
+        a.click();
+        URL.revokeObjectURL(url);
+        showToast("✅ Word document downloaded!", true);
+      })
+      .catch(() => {
+        showToast("⚠️ Failed to download Word document.", false);
+      });
+    }
+
+    document.addEventListener('DOMContentLoaded', updatePreview);
+  </script>
+
+</body>
+</html>
+

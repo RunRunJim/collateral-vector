@@ -1,0 +1,207 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>AC Feature Guide</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+
+  <script>
+    tailwind.config = {
+      darkMode: 'class'
+    }
+  </script>
+
+  <script>
+    if (localStorage.getItem('theme') === 'dark') {
+      document.documentElement.classList.add('dark');
+    }
+  </script>
+
+  <style>
+    /* Bob bounce ONCE */
+    @keyframes bobBounceOnce {
+      0%, 100% { transform: translateY(0); }
+      25% { transform: translateY(-15px); }
+      50% { transform: translateY(0); }
+      75% { transform: translateY(-10px); }
+    }
+    .animate-bob {
+      animation: bobBounceOnce 1.8s ease-out;
+    }
+
+    /* Sparkle on hover */
+    .crown:hover {
+      filter: drop-shadow(0 0 6px gold);
+      transition: filter 0.3s ease;
+    }
+
+    /* Smooth page fade-in */
+    body {
+      opacity: 0;
+      animation: fadeIn 0.8s ease forwards;
+    }
+    @keyframes fadeIn {
+      to { opacity: 1; }
+    }
+
+    /* Background gradients */
+    .bg-light {
+      background: linear-gradient(to bottom right, #e0f2fe, #ffffff);
+    }
+    .dark .bg-dark {
+      background: linear-gradient(to bottom right, #1f2937, #111827);
+    }
+
+    /* Neon button hover */
+    .dark .btn-neon:hover {
+      box-shadow: 0 0 10px #3b82f6, 0 0 20px #3b82f6;
+    }
+
+    html {
+      transition: background-color 0.3s, color 0.3s;
+    }
+  </style>
+</head>
+
+<body class="bg-light dark:bg-dark text-gray-800 dark:text-gray-100 min-h-screen flex flex-col items-center justify-center px-4">
+
+  <!-- 🌗 Dark Mode Toggle -->
+  <div class="flex justify-end w-full max-w-2xl mb-4">
+    <button onclick="toggleDarkMode()" class="bg-gray-300 dark:bg-gray-700 text-gray-800 dark:text-gray-100 px-4 py-2 rounded-lg text-sm">
+      🌗 Toggle Dark Mode
+    </button>
+  </div>
+
+  <div class="w-full max-w-2xl bg-white dark:bg-gray-800 shadow-2xl rounded-2xl p-8 space-y-6">
+
+    <!-- Header -->
+    <div class="flex flex-col items-center space-y-4 mb-6">
+      <img src="{{ url_for('static', filename='bob.png') }}" alt="Bob the Collateral King" class="w-32 h-32 rounded-full shadow-lg animate-bob crown">
+      <h1 class="text-3xl font-bold text-blue-600 dark:text-blue-400">👑 Bob the Collateral King</h1>
+      <p class="text-gray-500 dark:text-gray-300">Create collateral from source guidance material using AI - You're welcome!</p>
+    </div>
+
+    <!-- Form -->
+    <form method="POST" action="/" class="space-y-4">
+      <div>
+        <label for="confluence_url" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Confluence URL</label>
+        <input type="url" id="confluence_url" name="confluence_url" placeholder="https://your-domain.atlassian.net/wiki/..." required
+               class="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg shadow-sm focus:ring-2 focus:ring-blue-500 focus:outline-none bg-white dark:bg-gray-700 dark:text-gray-100">
+      </div>
+
+      <div>
+        <label for="action" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Select Output</label>
+        <select id="action" name="action"
+                class="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg shadow-sm focus:ring-2 focus:ring-blue-500 focus:outline-none bg-white dark:bg-gray-700 dark:text-gray-100">
+          <option value="pdf">Generate PDF Guide</option>
+          <option value="ppt">PowerPoint Slide</option>
+          <option value="release_note">Generate Release Note</option>
+          <option value="custom_doc">Custom Document</option>
+        </select>
+      </div>
+
+      <div class="flex justify-end gap-4">
+        <button type="submit"
+                class="bg-blue-600 hover:bg-blue-700 text-white font-semibold px-6 py-2 rounded-lg transition duration-300 btn-neon">
+          Generate
+        </button>
+        <button id="chatButton"
+                type="button"
+                onclick="toggleChatModal()"
+                class="bg-blue-600 hover:bg-blue-700 text-white font-semibold px-6 py-2 rounded-lg transition duration-300 btn-neon">
+          Ask Bob
+        </button>
+      </div>
+    </form>
+
+    {% if message %}
+    <div class="bg-red-100 dark:bg-red-400 border border-red-400 text-red-700 dark:text-white px-4 py-3 rounded relative" role="alert">
+      <span class="block sm:inline">{{ message }}</span>
+    </div>
+    {% endif %}
+
+    <div class="text-xs text-gray-400 dark:text-gray-500 text-center pt-4 border-t border-gray-200 dark:border-gray-600">
+      &copy; {{ now.year }} AC Collateral Tool
+    </div>
+  </div>
+
+  <!-- Chat Modal -->
+  <div id="chatModal" class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center z-50">
+    <div class="bg-white dark:bg-gray-800 rounded-lg w-96 p-4 flex flex-col shadow-lg">
+      <div class="flex justify-between items-center mb-2">
+        <h2 class="text-lg font-bold text-gray-800 dark:text-gray-100">Ask about this Feature</h2>
+        <button onclick="toggleChatModal()" class="text-gray-500 hover:text-gray-800 dark:hover:text-gray-300 text-xl">&times;</button>
+      </div>
+      <div id="chatMessages" class="overflow-y-auto border p-2 mb-2 rounded text-sm dark:border-gray-700" style="max-height: 400px;">
+      </div>
+      <div class="flex">
+        <input id="chatInput" type="text" class="flex-1 border rounded-l p-2 text-sm bg-white dark:bg-gray-700 dark:text-gray-100" placeholder="Type your question..." />
+        <button onclick="sendChatMessage()" class="bg-blue-500 hover:bg-blue-600 text-white p-2 rounded-r text-sm btn-neon">Send</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Scripts -->
+  <script>
+    function toggleChatModal() {
+      const modal = document.getElementById('chatModal');
+      modal.classList.toggle('hidden');
+      modal.classList.toggle('flex');
+    }
+
+    function sendChatMessage() {
+      const input = document.getElementById('chatInput');
+      const message = input.value.trim();
+      const confluenceURL = document.getElementById('confluence_url').value.trim();
+
+      if (message === '') return;
+
+      appendMessage('You', message);
+
+      fetch('/chat', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({
+          user_message: message,
+          confluence_url: confluenceURL
+        })
+      })
+      .then(response => response.json())
+      .then(data => {
+        appendMessage('Bot', data.reply);
+      })
+      .catch(() => {
+        appendMessage('Bot', '⚠️ There was an error. Please try again.');
+      });
+
+      input.value = '';
+    }
+
+    function appendMessage(sender, message) {
+      const chatBox = document.getElementById('chatMessages');
+      const msgDiv = document.createElement('div');
+      msgDiv.classList.add('mb-2');
+      msgDiv.innerHTML = `<strong>${sender}:</strong> ${message}`;
+      chatBox.appendChild(msgDiv);
+      chatBox.scrollTo({
+        top: chatBox.scrollHeight,
+        behavior: 'smooth'
+      });
+    }
+
+    function toggleDarkMode() {
+      document.documentElement.classList.toggle('dark');
+      if (document.documentElement.classList.contains('dark')) {
+        localStorage.setItem('theme', 'dark');
+      } else {
+        localStorage.setItem('theme', 'light');
+      }
+    }
+  </script>
+
+</body>
+</html>
+
+
+
+

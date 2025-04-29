@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Create Custom Document</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+
+  <!-- 🛠 Tell Tailwind we want class-based dark mode -->
+  <script>
+    tailwind.config = {
+      darkMode: 'class'
+    }
+  </script>
+
+  <!-- 🛠 Immediately apply dark mode if user previously selected it -->
+  <script>
+    if (localStorage.getItem('theme') === 'dark') {
+      document.documentElement.classList.add('dark');
+    }
+  </script>
+
+  <style>
+    html {
+      transition: background-color 0.3s, color 0.3s;
+    }
+  </style>
+</head>
+
+<body class="bg-gray-100 dark:bg-gray-900 text-gray-800 dark:text-gray-100 p-8 min-h-screen flex flex-col items-center justify-center">
+
+  <div class="w-full max-w-2xl bg-white dark:bg-gray-800 p-6 rounded-lg shadow-lg space-y-4">
+    <h1 class="text-2xl font-bold text-blue-600 dark:text-blue-400 mb-4">📝 Create Custom Document</h1>
+
+    <form method="POST" action="/generate_custom_doc" class="space-y-4">
+
+      <input type="hidden" id="confluence_url" name="confluence_url" value="{{ confluence_url }}">
+
+      <div>
+        <label for="prompt" class="block font-medium text-gray-700 dark:text-gray-300 mb-1">Describe what you want:</label>
+        <textarea id="prompt" name="prompt" class="w-full border rounded p-2 bg-white dark:bg-gray-700 dark:text-gray-100" rows="6" placeholder="e.g., Create a client FAQ for Reward Center" required></textarea>
+      </div>
+
+      <div class="flex justify-end">
+        <button type="submit" class="bg-blue-600 hover:bg-blue-700 text-white font-semibold px-4 py-2 rounded">
+          Generate
+        </button>
+      </div>
+
+    </form>
+  </div>
+
+</body>
+</html>
+
+
+
+
+

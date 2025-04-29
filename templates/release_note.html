@@ -1,0 +1,190 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Release Note Editor</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+
+  <!-- Tailwind config for dark mode -->
+  <script>
+    tailwind.config = {
+      darkMode: 'class'
+    }
+  </script>
+  <script>
+    if (localStorage.getItem('theme') === 'dark') {
+      document.documentElement.classList.add('dark');
+    }
+  </script>
+
+  <style>
+    /* 🖼️ Preview images */
+    #previewArea img {
+      max-width: 400px;
+      height: auto;
+      display: block;
+      margin: 10px auto;
+    }
+
+    /* ✨ Page fade-in */
+    body {
+      opacity: 0;
+      animation: fadeIn 0.8s ease forwards;
+    }
+
+    @keyframes fadeIn {
+      to {
+        opacity: 1;
+      }
+    }
+
+    /* 🌈 Background gradients */
+    .bg-light {
+      background: linear-gradient(to bottom right, #e0f2fe, #ffffff);
+    }
+
+    .dark .bg-dark {
+      background: linear-gradient(to bottom right, #1f2937, #111827);
+    }
+
+    /* Toast Animation */
+    #toast {
+      transition: all 0.5s ease;
+    }
+  </style>
+</head>
+
+<body class="bg-light dark:bg-dark text-gray-800 dark:text-gray-100 min-h-screen flex flex-col items-center justify-center p-8">
+
+  <!-- 🌗 Dark Mode Toggle -->
+  <div class="flex justify-end w-full max-w-4xl mb-4">
+    <button onclick="toggleDarkMode()" class="bg-gray-300 dark:bg-gray-700 text-gray-800 dark:text-gray-100 px-4 py-2 rounded-lg text-sm">
+      🌗 Toggle Dark Mode
+    </button>
+  </div>
+
+  <div class="w-full max-w-4xl bg-white dark:bg-gray-800 shadow-lg rounded-lg p-6 space-y-6">
+    <h1 class="text-2xl font-bold text-blue-600 dark:text-blue-400">✍️ Review and Edit Release Note</h1>
+
+    <!-- Textarea for editing -->
+    <textarea id="noteArea" class="w-full h-96 border rounded p-4 text-sm bg-white dark:bg-gray-700 dark:text-gray-100" oninput="updatePreview()">{{ release_note }}</textarea>
+
+    <input type="hidden" id="featureName" value="{{ feature_name }}">
+
+    <!-- Live Preview -->
+    <h2 class="text-xl font-bold text-gray-700 dark:text-gray-300 mt-6">Preview:</h2>
+    <div id="previewArea" class="border rounded p-4 bg-gray-50 dark:bg-gray-700 text-sm overflow-auto"></div>
+
+    <div class="flex gap-4 justify-end mt-6">
+      <button onclick="goHome()" class="bg-gray-300 dark:bg-gray-700 hover:bg-gray-400 dark:hover:bg-gray-600 text-gray-800 dark:text-gray-100 font-semibold px-4 py-2 rounded">
+        Go Home
+      </button>
+      <button onclick="downloadNote()" class="bg-gray-400 hover:bg-gray-500 text-white font-semibold px-4 py-2 rounded">
+        Download
+      </button>
+      <button onclick="publishNote()" class="bg-blue-600 hover:bg-blue-700 text-white font-semibold px-4 py-2 rounded">
+        Publish
+      </button>
+    </div>
+  </div>
+
+  <!-- Toast -->
+  <div id="toast" class="fixed top-4 right-4 px-6 py-3 rounded-lg shadow-lg hidden z-50 text-white">
+    <span id="toastMessage"></span>
+  </div>
+
+  <script>
+    function updatePreview() {
+      const inputText = document.getElementById('noteArea').value;
+      let html = marked.parse(inputText);
+
+      html = html.replace(/<img /g, '<img style="max-width:400px; height:auto; display:block; margin:10px auto;" ');
+      html = html.replace(/<li>(Step \d+:.*?)<\/li>/g, '<h3 style="margin-top:20px; font-size:18px;">$1</h3>');
+
+      document.getElementById('previewArea').innerHTML = html;
+    }
+
+    function downloadNote() {
+      const text = document.getElementById('noteArea').value;
+      const blob = new Blob([text], { type: 'text/plain' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = "release_note.txt";
+      a.click();
+      URL.revokeObjectURL(url);
+    }
+
+    function publishNote() {
+      const rawText = document.getElementById('noteArea').value;
+      const featureName = document.getElementById('featureName').value;
+      let htmlContent = marked.parse(rawText);
+
+      htmlContent = htmlContent.replace(/<img /g, '<img style="max-width:400px; height:auto; display:block; margin:10px auto;" ');
+      htmlContent = htmlContent.replace(/<li>(Step \d+:.*?)<\/li>/g, '<h3 style="margin-top:20px; font-size:18px;">$1</h3>');
+
+      fetch('/publish_release_note', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({
+          note_content: htmlContent,
+          page_title: featureName
+        })
+      })
+      .then(response => response.json())
+      .then(data => {
+        if (data.status === "success") {
+          showToast("✅ Successfully published!", true);
+        } else {
+          showToast("⚠️ Error: " + data.message, false);
+        }
+      })
+      .catch(() => {
+        showToast("⚠️ Unexpected error while publishing.", false);
+      });
+    }
+
+    function showToast(message, isSuccess) {
+      const toast = document.getElementById('toast');
+      const toastMessage = document.getElementById('toastMessage');
+      toastMessage.textContent = message;
+
+      if (isSuccess) {
+        toast.classList.remove('bg-red-500');
+        toast.classList.add('bg-green-500');
+      } else {
+        toast.classList.remove('bg-green-500');
+        toast.classList.add('bg-red-500');
+      }
+
+      toast.classList.remove('hidden');
+
+      setTimeout(() => {
+        toast.classList.add('hidden');
+      }, 5000);
+    }
+
+    function goHome() {
+      window.location.href = "/";
+    }
+
+    function toggleDarkMode() {
+      document.documentElement.classList.toggle('dark');
+      if (document.documentElement.classList.contains('dark')) {
+        localStorage.setItem('theme', 'dark');
+      } else {
+        localStorage.setItem('theme', 'light');
+      }
+    }
+
+    document.addEventListener('DOMContentLoaded', updatePreview);
+  </script>
+
+</body>
+</html>
+
+
+
+
+

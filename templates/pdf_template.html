@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>{{ title }}</title>
+    <style>
+    body {
+        font-family: "Helvetica", "Arial", sans-serif;
+        margin: 40px;
+        color: #333;
+    }
+    h1, h2 {
+        color: #0077b6;
+    }
+    img {
+        margin-top: 20px;
+        margin-bottom: 20px;
+        max-width: 400px;
+        width: auto;
+        height: auto;
+        display: block;
+        margin-left: auto;
+        margin-right: auto;
+    }
+    ul {
+        padding-left: 20px;
+    }
+    li {
+        margin-bottom: 15px;
+    }
+    .footer {
+        margin-top: 50px;
+        font-size: 12px;
+        color: #888;
+        text-align: center;
+    }
+    </style>
+</head>
+<body>
+
+    <div id="pdf-content">
+        <h1>{{ title }}</h1>
+
+        <h2>Overview</h2>
+        <p>{{ ai_summary }}</p>
+
+        {% if overview_image_base64 %}
+            <img src="{{ overview_image_base64 }}" alt="Overview Image">
+        {% endif %}
+
+        <h2>Configuration Steps</h2>
+        {% if ai_steps %}
+            <ul>
+            {% for step in ai_steps %}
+                <li>
+                    {{ step }}
+                    {% if step_images_base64.get(loop.index) %}
+                        <br>
+                        <img src="{{ step_images_base64.get(loop.index) }}" alt="Step {{ loop.index }} Image">
+                    {% endif %}
+                </li>
+            {% endfor %}
+            </ul>
+        {% else %}
+            <p><em>No configuration steps required.</em></p>
+        {% endif %}
+
+        <div class="footer">
+            © {{ now.year }} ACME Corp – Internal Use Only
+        </div>
+    </div>
+
+</body>
+</html>
+
+
+
+
+
+
+
