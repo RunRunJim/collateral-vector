@@ -196,27 +196,25 @@ def ask_vector():
     reply = generate_chat_reply(question, context)
 
     return jsonify({"reply": reply})
-@app.route("/index_page", methods=["POST"])    #TEMP ADD
+@app.route("/index_page", methods=["POST"])
 @requires_auth
 def index_confluence_page():
-    data = request.get_json()
-    confluence_url = data.get("confluence_url")
+    try:
+        data = request.get_json()
+        confluence_url = data.get("confluence_url")
 
-    if not confluence_url:
-        return jsonify({"status": "error", "message": "Missing confluence_url"})
+        if not confluence_url:
+            return jsonify({"error": "Missing confluence_url"}), 400
 
-    from utils.confluence import extract_page_id, fetch_confluence_content
-    from utils.vector_index import index_page
+        from utils.vector_index import index_page
+        index_page(confluence_url)
 
-    page_id = extract_page_id(confluence_url)
-    title, content, *_ = fetch_confluence_content(page_id)
+        return jsonify({"status": "success", "message": "Page indexed."})
 
-    if not content:
-        return jsonify({"status": "error", "message": "Failed to fetch page content"})
+    except Exception as e:
+        print("❌ Error indexing page:", e)
+        return jsonify({"error": str(e)}), 500
 
-    index_page(page_id, title, content)
-
-    return jsonify({"status": "success", "message": f"Indexed page '{title}'"})
 
 # --- Download custom document as Word ---
 @app.route("/download_word", methods=["POST"])

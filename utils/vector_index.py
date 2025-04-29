@@ -25,6 +25,18 @@ collection = client.get_or_create_collection(
     name="confluence_docs",
     embedding_function=get_openai_embeddings
 )
+def query_index(query_text, top_k=3):
+    if not query_text:
+        return []
+
+    query_embedding = get_openai_embeddings(query_text)[0]
+
+    results = collection.query(
+        query_embeddings=[query_embedding],
+        n_results=top_k
+    )
+
+    return results
 
 # --- Indexing function ---
 def index_page(confluence_url):
