@@ -4,7 +4,7 @@ import os
 import re
 import io
 import docx
-
+import openai
 from dotenv import load_dotenv
 
 from utils.confluence import extract_page_id, fetch_confluence_content, fetch_all_config_steps
@@ -120,6 +120,8 @@ def index():
     return render_template("index.html", now=datetime.now())
 
 # --- Chat endpoint ---
+from utils.vector_index import query_index
+
 @app.route("/chat", methods=["POST"])
 @requires_auth
 def chat():
@@ -134,13 +136,38 @@ def chat():
     if not page_id:
         return jsonify({"reply": "⚠️ Could not extract page ID from URL."})
 
-    _, page_text, _, _, _ = fetch_confluence_content(page_id)
+    # 🔍 Instead of fetching the whole page, query the vector store
+    try:
+        top_matches = query_index(user_message, top_k=3)
+        context_chunks = top_matches["documents"][0] if top_matches["documents"] else []
+        context_text = "\n\n".join(context_chunks)
 
-    if not user_message or not page_text:
-        return jsonify({"reply": "⚠️ Missing user message or Confluence content."})
+        if not context_text:
+            return jsonify({"reply": "⚠️ No relevant content found in the vector store."})
 
-    reply = generate_chat_reply(user_message, page_text)
-    return jsonify({"reply": reply})
+        # Build the prompt
+        prompt = f"""
+You are a helpful assistant. Based on the following guidance:
+
+\"\"\"{context_text}\"\"\"
+
+Answer this user question:
+\"\"\"{user_message}\"\"\"
+"""
+
+        reply = openai.ChatCompletion.create(
+            model="gpt-4",
+            messages=[{"role": "user", "content": prompt}],
+            temperature=0.5,
+            max_tokens=500
+        )["choices"][0]["message"]["content"].strip()
+
+        return jsonify({"reply": reply})
+
+    except Exception as e:
+        print("❌ Error during chat:", e)
+        return jsonify({"reply": f"⚠️ Internal error: {str(e)}"})
+
 
 # --- Publish release note ---
 @app.route("/publish_release_note", methods=["POST"])
