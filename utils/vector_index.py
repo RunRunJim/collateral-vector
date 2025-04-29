@@ -1,57 +1,49 @@
 import os
+import openai
 import chromadb
-from chromadb.utils import embedding_functions
-from openai import OpenAIError
+from chromadb.config import Settings
+from utils.confluence import fetch_confluence_content
 from dotenv import load_dotenv
-from typing import List
 
 load_dotenv()
 
-# Initialize Chroma client and collection
-client = chromadb.Client()
-collection = client.get_or_create_collection(name="confluence_docs")
+openai.api_key = os.getenv("OPENAI_API_KEY")
 
-# OpenAI embedding setup
-openai_api_key = os.getenv("OPENAI_API_KEY")
-openai_ef = embedding_functions.OpenAIEmbeddingFunction(
-    api_key=openai_api_key,
-    model_name="text-embedding-ada-002"
+# --- Embedding function for OpenAI v0.28 ---
+def get_openai_embeddings(texts):
+    if isinstance(texts, str):
+        texts = [texts]
+    response = openai.Embedding.create(
+        model="text-embedding-ada-002",
+        input=texts
+    )
+    return [d["embedding"] for d in response["data"]]
+
+# --- Create or get Chroma collection ---
+client = chromadb.Client(Settings(chroma_db_impl="duckdb+parquet", persist_directory=".chromadb"))
+collection = client.get_or_create_collection(
+    name="confluence_docs",
+    embedding_function=get_openai_embeddings
 )
 
+# --- Indexing function ---
+def index_page(confluence_url):
+    from utils.confluence import extract_page_id
+    page_id = extract_page_id(confluence_url)
 
-def split_text(text: str, chunk_size=500, overlap=50) -> List[str]:
-    words = text.split()
-    chunks = []
-    for i in range(0, len(words), chunk_size - overlap):
-        chunk = " ".join(words[i:i + chunk_size])
-        chunks.append(chunk)
-    return chunks
+    if not page_id:
+        raise ValueError("Could not extract page ID from URL.")
 
+    title, content, _, _, _ = fetch_confluence_content(page_id)
 
-def index_page(doc_id: str, title: str, content: str):
-    chunks = split_text(content)
-    metadata = [{"source": title}] * len(chunks)
+    if not content:
+        raise ValueError("No content fetched from Confluence.")
 
-    try:
-        collection.add(
-            documents=chunks,
-            metadatas=metadata,
-            ids=[f"{doc_id}-{i}" for i in range(len(chunks))],
-            embedding_function=openai_ef
-        )
-        print(f"✅ Indexed {len(chunks)} chunks from '{title}'")
-    except OpenAIError as e:
-        print(f"⚠️ OpenAI Error during indexing: {e}")
+    collection.add(
+        documents=[content],
+        metadatas=[{"source": confluence_url}],
+        ids=[page_id]
+    )
 
+    print(f"✅ Page indexed: {title}")
 
-def query_index(question: str, top_k=3) -> List[str]:
-    try:
-        results = collection.query(
-            query_texts=[question],
-            n_results=top_k,
-            embedding_function=openai_ef
-        )
-        return results['documents'][0] if results['documents'] else []
-    except Exception as e:
-        print(f"⚠️ Query failed: {e}")
-        return []
