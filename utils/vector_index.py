@@ -20,7 +20,7 @@ def get_openai_embeddings(texts):
     return [d["embedding"] for d in response["data"]]
 
 # --- Create or get Chroma collection ---
-client = chromadb.Client(Settings(chroma_db_impl="duckdb+parquet", persist_directory=".chromadb"))
+client = chromadb.PersistentClient(path=".chromadb")
 collection = client.get_or_create_collection(
     name="confluence_docs",
     embedding_function=get_openai_embeddings
